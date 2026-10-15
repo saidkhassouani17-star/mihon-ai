@@ -2,11 +2,16 @@ package eu.kanade.presentation.reader.settings
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
@@ -32,8 +37,47 @@ private val flashColors = listOf(
     MR.strings.pref_flash_style_white_black to ReaderPreferences.FlashColor.WHITE_BLACK,
 )
 
+private val translationLanguages = listOf(
+    "japan" to "Japanese",
+    "korean" to "Korean",
+    "ch" to "Chinese",
+    "en" to "English",
+)
+
 @Composable
 internal fun ColumnScope.GeneralPage(viewModel: ReaderSettingsViewModel) {
+    val autoTranslation by viewModel.preferences.enableAutoTranslation.collectAsState()
+    val translationUrl by viewModel.preferences.translationServerUrl.collectAsState()
+    val translationSourceLang by viewModel.preferences.translationSourceLang.collectAsState()
+
+    CheckboxItem(
+        label = stringResource(MR.strings.pref_reader_auto_translation),
+        pref = viewModel.preferences.enableAutoTranslation,
+    )
+
+    if (autoTranslation) {
+        OutlinedTextField(
+            value = translationUrl,
+            onValueChange = { viewModel.preferences.translationServerUrl.set(it) },
+            label = { Text(stringResource(MR.strings.pref_reader_translation_server_url)) },
+            placeholder = { Text("https://xxxx.trycloudflare.com") },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        )
+
+        SettingsChipRow(MR.strings.pref_reader_translation_source_language) {
+            translationLanguages.forEach { (value, label) ->
+                FilterChip(
+                    selected = translationSourceLang == value,
+                    onClick = { viewModel.preferences.translationSourceLang.set(value) },
+                    label = { Text(label) },
+                )
+            }
+        }
+    }
+
     val readerTheme by viewModel.preferences.readerTheme.collectAsState()
 
     val flashPageState by viewModel.preferences.flashOnPageChange.collectAsState()

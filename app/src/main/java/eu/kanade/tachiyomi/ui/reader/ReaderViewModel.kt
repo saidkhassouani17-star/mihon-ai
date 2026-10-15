@@ -46,6 +46,7 @@ import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import eu.kanade.tachiyomi.ui.reader.loader.MangaTranslatorClient
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.util.chapter.filterDownloaded
@@ -129,6 +130,7 @@ class ReaderViewModel(
     private val coverCache: CoverCache,
     private val chapterCache: ChapterCache,
     private val downloadCache: DownloadCache,
+    private val mangaTranslatorClient: MangaTranslatorClient,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -362,6 +364,8 @@ class ReaderViewModel(
                     ::canLoadAhead,
                     manga,
                     source,
+                    readerPreferences,
+                    mangaTranslatorClient,
                 )
 
                 chapterList = loadChapterList()

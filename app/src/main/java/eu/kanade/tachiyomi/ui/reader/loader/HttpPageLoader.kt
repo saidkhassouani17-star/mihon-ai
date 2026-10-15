@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -16,6 +17,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.ResponseBody.Companion.toResponseBody
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -27,6 +29,8 @@ internal class HttpPageLoader(
     private val chapterCache: ChapterCache,
     private val appScope: CoroutineScope,
     private val canLoadAhead: () -> Boolean,
+    private val readerPreferences: ReaderPreferences,
+    private val mangaTranslatorClient: MangaTranslatorClient,
 ) : PageLoader() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -68,7 +72,9 @@ internal class HttpPageLoader(
         val imageUrl = page.imageUrl
 
         // Check if the image has been deleted
-        if (page.status == Page.State.Ready && imageUrl != null && !chapterCache.isImageInCache(imageUrl)) {
+        if (page.status == Page.State.Ready && imageUrl != null &&
+            !chapterCache.isImageInCache(cacheImageKey(imageUrl))
+        ) {
             page.status = Page.State.Queue
         }
 
@@ -229,13 +235,30 @@ internal class HttpPageLoader(
                 page.imageUrl = source.getImageUrl(page)
             }
             val imageUrl = page.imageUrl!!
+            val cacheImageUrl = cacheImageKey(imageUrl)
 
-            if (force || !chapterCache.isImageInCache(imageUrl)) {
+            if (force || !chapterCache.isImageInCache(cacheImageUrl)) {
                 val live = page.downloadStream
                 page.status = Page.State.DownloadImage
                 try {
                     val imageResponse = source.getImage(page)
-                    chapterCache.putImageToCache(imageUrl, imageResponse, live)
+                    val responseToCache = if (
+                        readerPreferences.enableAutoTranslation.get() &&
+                        readerPreferences.translationServerUrl.get().isNotBlank()
+                    ) {
+                        val originalBytes = imageResponse.use { it.body.bytes() }
+                        val translatedBytes = mangaTranslatorClient.translatePage(
+                            imageBytes = originalBytes,
+                            serverUrl = readerPreferences.translationServerUrl.get(),
+                            sourceLang = readerPreferences.translationSourceLang.get(),
+                        )
+                        imageResponse.newBuilder()
+                            .body(translatedBytes.toResponseBody(imageResponse.body.contentType()))
+                            .build()
+                    } else {
+                        imageResponse
+                    }
+                    chapterCache.putImageToCache(cacheImageUrl, responseToCache, live)
                     live?.finish()
                 } catch (e: Throwable) {
                     live?.finish(e)
@@ -244,7 +267,7 @@ internal class HttpPageLoader(
             }
 
             page.downloadStream = null
-            page.stream = { chapterCache.getImageFile(imageUrl).inputStream() }
+            page.stream = { chapterCache.getImageFile(cacheImageUrl).inputStream() }
             page.status = Page.State.Ready
         } catch (e: Throwable) {
             page.downloadStream = null
@@ -255,6 +278,19 @@ internal class HttpPageLoader(
                 throw e
             }
             page.status = Page.State.Error(e)
+        }
+    }
+
+    private fun cacheImageKey(imageUrl: String): String {
+        if (!readerPreferences.enableAutoTranslation.get()) return imageUrl
+        val serverUrl = readerPreferences.translationServerUrl.get().trim()
+        if (serverUrl.isBlank()) return imageUrl
+        return buildString {
+            append(imageUrl)
+            append("|mihon-translation|")
+            append(readerPreferences.translationSourceLang.get())
+            append('|')
+            append(serverUrl)
         }
     }
 }

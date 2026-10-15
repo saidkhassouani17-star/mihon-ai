@@ -75,6 +75,9 @@
     <string name="action_search">Search</string>
     <string name="action_search_hint">Search…</string>
     <string name="action_search_settings">Search settings</string>
+    <string name="pref_reader_auto_translation">Translate pages automatically</string>
+    <string name="pref_reader_translation_server_url">Translation server URL</string>
+    <string name="pref_reader_translation_source_language">Manga source language</string>
     <string name="action_global_search">Global search</string>
     <string name="action_select_all">Select all</string>
     <string name="action_select_inverse">Select inverse</string>

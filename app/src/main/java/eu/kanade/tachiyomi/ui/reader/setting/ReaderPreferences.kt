@@ -113,6 +113,21 @@ class ReaderPreferences(
 
     val webtoonDisableZoomOut: Preference<Boolean> = preferenceStore.getBoolean("webtoon_disable_zoom_out", false)
 
+    val enableAutoTranslation: Preference<Boolean> = preferenceStore.getBoolean(
+        "reader_enable_auto_translation",
+        false,
+    )
+
+    val translationServerUrl: Preference<String> = preferenceStore.getString(
+        "reader_translation_server_url",
+        "",
+    )
+
+    val translationSourceLang: Preference<String> = preferenceStore.getString(
+        "reader_translation_source_lang",
+        "japan",
+    )
+
     // endregion
 
     // region Split two-page spread
